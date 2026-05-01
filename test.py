@@ -2,7 +2,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize  # <-- change t
 from unitree_sdk2py.go2.sport.sport_client import SportClient
 import time
 
-ChannelFactoryInitialize(0, "wlan0")  # <-- and change this line
+ChannelFactoryInitialize(0, "wlo1")  # <-- and change this line
 
 client = SportClient()
 client.SetTimeout(10.0)
