@@ -1,4 +1,4 @@
-# Gianni — Unitree Go2 WebRTC examples
+# Unitree Go2 WebRTC examples
 
 Small standalone Python scripts for a **Unitree Go2** over **WebRTC** on your LAN (`WebRTCConnectionMethod.LocalSTA`), same style of path as the official apps when the robot is a Wi‑Fi client on your router.
 
