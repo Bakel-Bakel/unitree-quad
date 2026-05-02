@@ -5,7 +5,7 @@ async def main():
     # Both laptop and Go2 are on the same router (192.168.1.x)
     conn = UnitreeWebRTCConnection(
         WebRTCConnectionMethod.LocalSTA,
-        ip="192.168.1.70"  # your Go2's IP
+        ip="192.168.1.66"  # your Go2's IP
     )
     await conn.connect()
     print("Connected!")

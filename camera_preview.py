@@ -14,7 +14,7 @@ def main():
     frame_queue = Queue()
 
     # Your Go2's IP on the shared router
-    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip="192.168.1.70")
+    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip="192.168.1.66")
 
     async def recv_camera_stream(track: MediaStreamTrack):
         while True:

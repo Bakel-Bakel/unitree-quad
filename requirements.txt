@@ -1,0 +1,8 @@
+# Unitree Go2 WebRTC Python SDK — install method may vary; see upstream docs.
+# https://github.com/unitreerobotics/unitree_webrtc_connect
+unitree_webrtc_connect
+
+# Used by camera_preview_webrtc.py
+opencv-python
+numpy
+aiortc

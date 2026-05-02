@@ -8,7 +8,7 @@ from unitree_webrtc_connect.constants import RTC_TOPIC, SPORT_CMD
 logging.basicConfig(level=logging.FATAL)
 
 async def main():
-    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip="192.168.1.70")
+    conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip="192.168.1.66")
     await conn.connect()
     print("Connected!")
 
