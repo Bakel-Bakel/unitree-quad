@@ -33,7 +33,7 @@ async def main():
     print("Moving forward...")
     await conn.datachannel.pub_sub.publish_request_new(
         RTC_TOPIC["SPORT_MOD"],
-        {"api_id": SPORT_CMD["Move"], "parameter": {"x": 0.3, "y": 0, "z": 0}}
+        {"api_id": SPORT_CMD["Move"], "parameter": {"x": 1, "y": 0, "z": 0}}
     )
 
     await asyncio.sleep(1)  # Move for 1 second (~0.3m)
