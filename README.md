@@ -1,100 +1,72 @@
 # Gianni — Unitree Go2 WebRTC examples
 
-This repository holds small standalone Python demos for talking to a **Unitree Go2** robot over **WebRTC**, using the same network path the official apps use when the dog is reachable on your LAN (typically **STA / Wi‑Fi client** mode, not pairing over the robot’s hotspot alone).
+Small standalone Python scripts for a **Unitree Go2** over **WebRTC** on your LAN (`WebRTCConnectionMethod.LocalSTA`), same style of path as the official apps when the robot is a Wi‑Fi client on your router.
 
-There is **no package layout** here: three scripts live at the repo root. They all assume your computer and the Go2 are on the **same LAN** (for example both on `192.168.1.x`) and that you know the robot’s IP address.
+Scripts live at the repo root (no package). They default to IP **`192.168.1.66`** — change that in each file to match your Go2.
 
 ---
 
-## What each file does
+## Motion scripts (high-level API)
 
-### `walk_with_motion_switch.py` — Motion mode check + timed forward jog
+These four files share one flow:
 
-Purpose: connect, ensure the robot is in a sane motion state, walk forward briefly, then stop.
+1. Connect to the robot.
+2. **Motion switcher**: query current mode with `api_id` **1001** on `RTC_TOPIC["MOTION_SWITCHER"]`; if it is not **`normal`**, send **1002** to switch and wait **5 seconds**.
+3. **Move** via `RTC_TOPIC["SPORT_MOD"]` and `SPORT_CMD["Move"]` with the script-specific velocity.
+4. Hold the move for **3 seconds** (comments in code still mention “1 second” in places).
+5. Send **Move** with **`x`, `y`, `z` all zero** to stop.
 
-Flow:
+They use `unitree_webrtc_connect` constants (`RTC_TOPIC`, `SPORT_CMD`), logging at `FATAL`, and **`Ctrl+C`** handling in the `if __name__ == "__main__"` block.
 
-1. **Connect** with `UnitreeWebRTCConnection` using `WebRTCConnectionMethod.LocalSTA` and the configured IP (`192.168.1.70` in the script).
-2. **Motion switcher (high-level)**  
-   - Publishes a request on `RTC_TOPIC["MOTION_SWITCHER"]` with `api_id` **1001** to read the current mode name.  
-   - If the mode is not `"normal"`, sends **1002** with `parameter.name: "normal"` and sleeps **5 seconds** (to give the robot time to stand / settle).
-3. **Move** via `RTC_TOPIC["SPORT_MOD"]` using `SPORT_CMD["Move"]`, with velocity **`x: 0.3`**, **`y: 0`**, **`z: 0`** (forward at a modest pace in the robot’s sport API convention).
-4. After **1 second**, sends another **Move** with all zeros to **stop**.
+| Script | Direction / speed | Move parameter `x` |
+|--------|-------------------|----------------------|
+| `move_forward_0.3.py` | Forward, moderate | `0.3` |
+| `move_back_0.3.py` | Backward, moderate | `-0.3` |
+| `move_forward_veryfast.py` | Forward, high | `1` |
+| `move_back_veryfast.py` | Intended backward fast (see note) | `1` in repo |
 
-Characteristics:
+**Note:** In the current tree, `move_back_veryfast.py` uses the same **`x: 1`** as `move_forward_veryfast.py` (and the print text still says “Moving forward”). For backward motion, your firmware likely expects a **negative** `x` (as in `move_back_0.3.py`). Fix the sign there if you want a true fast reverse.
 
-- Uses the library’s **named topics and command constants** (`RTC_TOPIC`, `SPORT_CMD`) instead of hand-built topic strings — easier to maintain and aligned with [`unitree_webrtc_connect`](https://github.com/unitreerobotics/unitree_webrtc_connect)-style bindings.
-- Sets logging to `FATAL` to cut noise during runs.
-- Handles **Ctrl+C** and exits cleanly.
+---
 
-### `sport_stand_walk_raw_requests.py` — Minimal sport API over raw topics
+## `raw_data_requests.py` — Sport API via raw topic string
 
-Purpose: shortest path “stand up, move forward, stop” without the motion-switcher prelude.
+Lower-level alternative: no motion-switcher step; sends JSON-shaped requests on **`rt/api/sport/request`** with `header.identity` (`id`, `api_id`) and a string **`parameter`**.
 
-Flow:
+- **1004** — stand (`parameter "{}"`), then **2 s** wait.
+- **1008** — move with `{"x": 0.3, "y": 0, "z": 0}` for **1 s**, then stop with zeros.
 
-1. Same **Local STA** connection pattern and IP as above.
-2. Sends requests to the string topic **`rt/api/sport/request`** with a **`header.identity`** block (`id` + **`api_id`**) and a JSON **`parameter`** string.
+No `KeyboardInterrupt` wrapper in the main path. Same **`LocalSTA`** + IP as the other scripts.
 
-Rough mapping in this script:
+---
 
-- **1004** — stand up (`parameter "{}"`).
-- **1008** — move with `parameter '{"x": 0.3, "y": 0, "z": 0}'` then zeros to stop.
+## `camera_preview.py` — Live camera (OpenCV)
 
-Characteristics:
+Opens a window **Go2 Camera**: enables the WebRTC video channel, registers a track callback, decodes frames to BGR, and passes them through a **`Queue`** from an asyncio thread to the main thread for **`cv2.imshow`**.
 
-- **Lower-level framing**: you assemble `header` / `parameter` manually. Useful to see the wire shape or to prototype calls that aren’t wrapped by constants yet.
-- No mode check; assumes the robot can accept sport commands immediately.
-- No structured stop on keyboard interrupt in the snippet (unlike `walk_with_motion_switch.py`).
-
-### `camera_preview_webrtc.py` — Live camera preview (OpenCV window)
-
-Purpose: subscribe to the Go2 **video channel** over the same WebRTC session and display frames in a window titled **Go2 Camera**.
-
-Architecture:
-
-1. Creates a **`unitree_webrtc_connect`** connection (`LocalSTA` + IP).
-2. Runs **async setup** on a **background thread** with its own event loop:
-   - `await conn.connect()`
-   - `conn.video.switchVideoChannel(True)`
-   - `conn.video.add_track_callback(recv_camera_stream)` — each decoded frame is pushed to a **`Queue`** shared with the main thread.
-3. **Main thread** polls the queue with a short sleep when empty and uses **`cv2.imshow`**; press **`q`** to quit.
-4. On exit: destroys OpenCV windows, stops the asyncio loop, joins the worker thread.
-
-Dependencies beyond the WebRTC library: **`opencv-python`**, **`numpy`**, **`aiortc`** (`MediaStreamTrack` type hint / track API).
-
-Characteristics:
-
-- Mixes asyncio and GUI in a pragmatic way (thread + queue) so OpenCV doesn’t block the WebRTC loop.
-- Default placeholder window uses **720×1280** until the first real frame arrives; actual frame size follows the incoming stream.
+- Press **`q`** with the window focused to quit.
+- Dependencies: **`opencv-python`**, **`numpy`**, **`aiortc`** (plus `unitree_webrtc_connect`).
 
 ---
 
 ## Prerequisites
 
-- **Python** 3.9+ recommended (stdlib `asyncio` usage is straightforward; match whatever your installed `unitree_webrtc_connect` supports).
-- **Unitree Go2** reachable on the LAN in a mode compatible with **`WebRTCConnectionMethod.LocalSTA`** — typically the robot joins your Wi‑Fi and gets an IP like `192.168.1.x`.
-- **`unitree_webrtc_connect`** installed and working with your firmware (see upstream repo / SDK docs).
+- **Python** 3.9+ (match what `unitree_webrtc_connect` supports).
+- **Go2** on the LAN in **Local STA** mode with a known IP.
+- **`unitree_webrtc_connect`** installed per [upstream docs](https://github.com/unitreerobotics/unitree_webrtc_connect).
 
 ---
 
 ## Configuration
 
-Every script hard-codes:
+- **IP:** search each script for `ip="192.168.1.66"` and set your robot’s address.
+- **Speed / duration:** edit the `Move` parameter and `asyncio.sleep(...)` after the move command in the motion scripts; mis-tuned values can make the dog slide, trip, or hit obstacles.
 
-```python
-ip="192.168.1.70"
-```
-
-Change this to **your robot’s actual IP** (router DHCP list, Unitree app, or `ping`/`arp`). If your LAN uses another subnet (`10.0.0.x`, etc.), only the robot’s IP matters as long as routing is flat on that LAN.
-
-**Velocity** (`x`, `y`, `z`) in `walk_with_motion_switch.py` / `sport_stand_walk_raw_requests.py` controls speed and direction in the sport API’s convention; **`0.3`** is a cautious forward example — tune for floor type and clearance.
+Forward vs backward in this codebase follows **`x`** sign on **`SPORT_CMD["Move"]`**: positive forward (`move_forward_*`), negative for the slow back script (`move_back_0.3.py`).
 
 ---
 
 ## Installation
-
-Clone the repo, create a virtual environment, install dependencies:
 
 ```bash
 cd Gianni
@@ -103,71 +75,57 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-If `requirements.txt` is missing in your checkout, install at minimum:
-
-```text
-unitree_webrtc_connect
-opencv-python
-numpy
-aiortc
-```
-
-Exact package names may follow the upstream naming on PyPI or GitHub; align with Unitree’s current instructions.
+If needed manually: `unitree_webrtc_connect`, and for camera only additionally `opencv-python`, `numpy`, `aiortc`.
 
 ---
 
-## Running the scripts
-
-From the activated environment:
+## Running
 
 ```bash
-python walk_with_motion_switch.py     # Mode check → forward ~1 s → stop
-python sport_stand_walk_raw_requests.py   # Stand → forward → stop (raw sport topic)
-python camera_preview_webrtc.py           # Live camera window (press q to quit)
+python move_forward_0.3.py
+python move_back_0.3.py
+python move_forward_veryfast.py
+python move_back_veryfast.py      # verify sign matches “back” intent
+python raw_data_requests.py
+python camera_preview.py           # quit with q
 ```
-
-- Stop **`walk_with_motion_switch.py`** with **Ctrl+C** if needed.
-- Stop **`camera_preview_webrtc.py`** by focusing the window and pressing **`q`**.
 
 ---
 
-## Which script should I use?
+## Which script?
 
 | Goal | Script |
 |------|--------|
-| Reliable walk demo with motion-mode guard | **`walk_with_motion_switch.py`** |
-| Inspect raw `/ rt/api/sport/request` payloads | **`sport_stand_walk_raw_requests.py`** |
-| Verify video / latency / FoV | **`camera_preview_webrtc.py`** |
-
-`walk_with_motion_switch.py` and `sport_stand_walk_raw_requests.py` illustrate **two layers** of the same stack: curated constants versus explicit topic + `api_id` JSON. Prefer **`walk_with_motion_switch.py`** for day-to-day control experiments unless you’re debugging payloads.
-
----
-
-## Safety and responsibility
-
-These scripts issue **real motion commands** to a legged robot. Run only with:
-
-- Adequate **clear floor space**, traction, and no people or fragile objects in the workspace.
-- The robot **on the ground** and in a configuration where stand/walk commands are appropriate.
-- **Emergency stop / manual override** understood (hardware E-stop or app safety features per Unitree docs).
-
-Authors of this demo code are responsible for validating behavior against their firmware; **do not** assume velocities or API IDs remain identical across firmware versions without checking Unitree documentation.
+| Safe-ish forward jog with mode guard | `move_forward_0.3.py` |
+| Backward jog, moderate | `move_back_0.3.py` |
+| Faster forward experiment | `move_forward_veryfast.py` |
+| Raw payload shape / minimal flow | `raw_data_requests.py` |
+| Check camera / latency | `camera_preview.py` |
 
 ---
 
-## Repository layout
+## Safety
+
+These send **real motion commands**. Use clear floor space, good footing, nobody in the swing path, and know how to stop the robot via app or hardware per Unitree. Validate **`x` / `y` / `z`** and sleep durations against your firmware and environment.
+
+---
+
+## Layout
 
 ```
 Gianni/
-├── README.md       # This file
-├── requirements.txt # Python dependencies (if present)
-├── walk_with_motion_switch.py       # Motion switcher + sport move (library topics)
-├── sport_stand_walk_raw_requests.py # Sport API via raw topic strings
-└── camera_preview_webrtc.py          # WebRTC video → OpenCV preview
+├── README.md
+├── requirements.txt
+├── move_forward_0.3.py
+├── move_back_0.3.py
+├── move_forward_veryfast.py
+├── move_back_veryfast.py
+├── raw_data_requests.py
+└── camera_preview.py
 ```
 
 ---
 
 ## License
 
-No license file is included in this repository. If you publish or redistribute, add a `LICENSE` that matches your intent and any obligations from `unitree_webrtc_connect` or Unitree’s SDK terms.
+No `LICENSE` file in this repo; add one if you redistribute. Respect Unitree / SDK terms for `unitree_webrtc_connect`.

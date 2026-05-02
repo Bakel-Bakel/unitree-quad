@@ -2,7 +2,7 @@
 # https://github.com/unitreerobotics/unitree_webrtc_connect
 unitree_webrtc_connect
 
-# Used by camera_preview_webrtc.py
+# Used by camera_preview.py
 opencv-python
 numpy
 aiortc
