@@ -17,6 +17,9 @@ These four files share one flow:
 5. Send **Move** with **`x`, `y`, `z` all zero** to stop.
 
 They use `unitree_webrtc_connect` constants (`RTC_TOPIC`, `SPORT_CMD`), logging at `FATAL`, and **`Ctrl+C`** handling in the `if __name__ == "__main__"` block.
+What `Ctrl+C` looks like during a run — the script catches it and shuts down cleanly:
+
+![KeyboardInterrupt during shutdown](assets/images/Robodog_2.jpeg)
 
 | Script | Direction / speed | Move parameter `x` |
 |--------|-------------------|----------------------|
@@ -24,6 +27,19 @@ They use `unitree_webrtc_connect` constants (`RTC_TOPIC`, `SPORT_CMD`), logging 
 | `move_back_0.3.py` | Backward, moderate | `-0.3` |
 | `move_forward_veryfast.py` | Forward, high | `1` |
 | `move_back_veryfast.py` | Intended backward fast (see note) | `1` in repo |
+### Demos
+
+Forward motion (`move_forward_0.3.py`):
+
+<video src="assets/videos/Robodog_3.mp4" controls width="600"></video>
+
+Backward motion (`move_back_0.3.py`):
+
+<video src="assets/videos/Robodog_2.mp4" controls width="600"></video>
+
+A clean successful run in the terminal — connection lifecycle, motion-switcher confirming `normal` mode, then `Moving forward... Stopping... Done!`:
+
+![Successful motion run](assets/images/Robodog_1.jpeg)
 
 **Note:** In the current tree, `move_back_veryfast.py` uses the same **`x: 1`** as `move_forward_veryfast.py` (and the print text still says “Moving forward”). For backward motion, your firmware likely expects a **negative** `x` (as in `move_back_0.3.py`). Fix the sign there if you want a true fast reverse.
 
@@ -35,6 +51,9 @@ Lower-level alternative: no motion-switcher step; sends JSON-shaped requests on 
 
 - **1004** — stand (`parameter "{}"`), then **2 s** wait.
 - **1008** — move with `{"x": 0.3, "y": 0, "z": 0}` for **1 s**, then stop with zeros.
+The pose-change command (`api_id 1004`) in action — robot transitions from standing down to lying flat:
+
+<video src="assets/videos/Robodog_1.mp4" controls width="600"></video>
 
 No `KeyboardInterrupt` wrapper in the main path. Same **`LocalSTA`** + IP as the other scripts.
 
@@ -46,6 +65,13 @@ Opens a window **Go2 Camera**: enables the WebRTC video channel, registers a tra
 
 - Press **`q`** with the window focused to quit.
 - Dependencies: **`opencv-python`**, **`numpy`**, **`aiortc`** (plus `unitree_webrtc_connect`).
+The live `Go2 Camera` OpenCV window once the WebRTC video channel is up:
+
+![Go2 Camera live view](assets/images/Robodog_4.jpeg)
+
+A common gotcha: if the official Unitree mobile app is still connected to the dog, you'll get `RobotBusyError`. Close the app, then retry:
+
+![RobotBusyError when another client is connected](assets/images/Robodog_3.jpeg)
 
 ---
 
