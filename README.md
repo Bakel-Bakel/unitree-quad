@@ -31,11 +31,15 @@ What `Ctrl+C` looks like during a run — the script catches it and shuts down c
 
 Forward motion (`move_forward_0.3.py`):
 
-<video src="assets/videos/Robodog_3.mp4" controls width="600"></video>
+
+https://github.com/user-attachments/assets/39bc21d7-673b-473c-9d89-abcef5309879
+
 
 Backward motion (`move_back_0.3.py`):
 
-<video src="assets/videos/Robodog_2.mp4" controls width="600"></video>
+
+https://github.com/user-attachments/assets/76d5d078-2091-4e35-bab8-fd2104fcbfdf
+
 
 A clean successful run in the terminal — connection lifecycle, motion-switcher confirming `normal` mode, then `Moving forward... Stopping... Done!`:
 
@@ -53,7 +57,9 @@ Lower-level alternative: no motion-switcher step; sends JSON-shaped requests on 
 - **1008** — move with `{"x": 0.3, "y": 0, "z": 0}` for **1 s**, then stop with zeros.
 The pose-change command (`api_id 1004`) in action — robot transitions from standing down to lying flat:
 
-<video src="assets/videos/Robodog_1.mp4" controls width="600"></video>
+
+https://github.com/user-attachments/assets/b3d2d338-5ed1-4054-a345-b46374088945
+
 
 No `KeyboardInterrupt` wrapper in the main path. Same **`LocalSTA`** + IP as the other scripts.
 
